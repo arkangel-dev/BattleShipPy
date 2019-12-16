@@ -11,6 +11,9 @@ class BattleShip:
     score = 0
     firepower = 10
 
+    cannon_count = 2
+    movement_count = 1
+
     def __init__(self, name):
         self.name = name
         self.x = randrange(0, 800)
@@ -61,7 +64,7 @@ class BattleShip:
         self.health = 100
         self.x = randrange(0, 800)
         self.y = randrange(0, 800)
-        color = (0, 255, 0)
+        self.color = (0, 255, 0)
 
 class Shot:
     x = 0

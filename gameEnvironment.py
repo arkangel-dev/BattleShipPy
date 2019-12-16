@@ -7,6 +7,7 @@ import json
 import pygame
 import shipDefinitions
 import weakref
+import gc
 
 class BattleEnvironment:
     pygame.init()
@@ -28,13 +29,23 @@ class BattleEnvironment:
     myfont = pygame.font.SysFont('Arial MS', 16)
 
 
+    # Visual Settings...
+    showRanges = True
+    showFlag = True
+    showCoords = True
+    showName = True
+    showDistance = True
+
+
     def remember(self, obj):
         oid = id(obj)
         self.ShipList[oid] = obj
         return oid
 
     def RecallShip(self, oid):
-        return self.ShipList[oid]
+        for obj in gc.get_objects():
+            if id(obj) == oid:
+                return obj
 
     def StartEnvironment(self):
             network_handler = threading.Thread(target=self.StartListener)
@@ -70,18 +81,39 @@ class BattleEnvironment:
                     self.screen, ship.color,
                     pygame.Rect(ship.x - 3, ship.y - 3, 6, 6)
                 )
-                # Draw the ranges...
-                pygame.draw.circle(self.screen, (50, 0, 0), (ship.x, ship.y), 100, 1)
-                pygame.draw.circle(self.screen, (0, 0, 50), (ship.x, ship.y), 200, 1)
-                # Draw the ship names...
-                textsurface = self.myfont.render(ship.name, True, (0, 156, 3))
-                self.screen.blit(textsurface, (ship.x, ship.y + 9))
-                # Draw ship flags...
-                textsurface = self.myfont.render(ship.flag, True, (0, 156, 3))
-                self.screen.blit(textsurface, (ship.x + 18, ship.y + 18))
-                # Draw the ship co-ordinates...
-                textsurface = self.myfont.render(str(ship.x) + ":" + str(ship.y), True, (0, 156, 3))
-                self.screen.blit(textsurface, (ship.x - 18, ship.y - 18))
+
+                if self.showRanges:
+                    # Draw the ranges...
+                    pygame.draw.circle(self.screen, (50, 0, 0), (ship.x, ship.y), 100, 1)
+                    pygame.draw.circle(self.screen, (0, 0, 50), (ship.x, ship.y), 200, 1)
+                
+                if self.showName:
+                    # Draw the ship names...
+                    textsurface = self.myfont.render(ship.name, True, (0, 156, 3))
+                    self.screen.blit(textsurface, (ship.x, ship.y + 9))
+                
+                if self.showFlag:
+                    # Draw ship flags...
+                    textsurface = self.myfont.render(ship.flag, True, (0, 156, 3))
+                    self.screen.blit(textsurface, (ship.x, ship.y + 18))
+                
+                if self.showCoords:
+                    # Draw the ship co-ordinates...
+                    textsurface = self.myfont.render(str(ship.x) + ":" + str(ship.y), True, (0, 156, 3))
+                    self.screen.blit(textsurface, (ship.x, ship.y + 27))
+
+                if self.showDistance:
+                    # Draw a line between the ships...
+                    for nearby_ships_id in self.shipIdList:
+                        if (shipid != nearby_ships_id):
+                            nearby_ship = self.RecallShip(nearby_ships_id)
+                            distance = self.CalculateDistance((nearby_ship.x, nearby_ship.y), (ship.x, ship.y))
+                            if (distance < 200):
+                                # g_color = 255 * ((200 - distance) / 200)
+                                pygame.draw.line(self.screen, (0, 100, 0), (ship.x, ship.y), (nearby_ship.x, nearby_ship.y), 1)
+                                midpoint = ((ship.x + nearby_ship.x) / 2 + 18, (ship.y + nearby_ship.y) / 2 + 18)
+                                textsurface = self.myfont.render(str(distance), True, (0, 156, 3))
+                                self.screen.blit(textsurface, (midpoint))
                 
             # Draw the shots...
             for crater in self.craterList:
@@ -92,8 +124,6 @@ class BattleEnvironment:
                 else: # if it is expired, remove it from the list...
                     self.craterList.remove(crater)
 
-            # print(self.shipIdList)
-
             pygame.display.flip()
             self.clock.tick(60)
 
@@ -102,7 +132,6 @@ class BattleEnvironment:
     def newPlayer(self, client_socket): # add a new ship to the system...
         currentShip = shipDefinitions.BattleShip("???")
         newshipid = id(currentShip)
-        print("[+] Generating Ship : " + str(newshipid))
         self.remember(currentShip)
         self.shipIdList.append(newshipid)
         self.handle_client_connection(client_socket, newshipid)
@@ -110,32 +139,37 @@ class BattleEnvironment:
 
     def SendRadarData(self, client_socket, ship_id): # send the radar information to the client
         while True:
-            Message = self.generateReport(ship_id)
-            self.Send(client_socket, Message)
-            time.sleep(0.5)
+            try:
+                Message = self.generateReport(ship_id)
+                self.Send(client_socket, Message)
+                time.sleep(0.25)
+            except:
+                break
 
     
     def generateReport(self, ship_id): # generate a json report so SendRadarData() can send it to the client...
         ship = self.RecallShip(ship_id)
 
         template = {"ships" : []}
-        shiptemplate = {"x" : "null", "y" : "null", "health" : "null", "flag" : "null"}
-
+        
         # add local ship first...
-        shiptemplate["x"] = ship.x
-        shiptemplate["y"] = ship.y
-        shiptemplate["health"] = ship.health
-        shiptemplate["flag"] = ship.flag
-        template["ships"].append(shiptemplate)
+        template["ships"].append({
+            'x' : ship.x,
+            'y' : ship.y,
+            'flag' : ship.flag,
+            'health' : ship.health
+        })
 
         for ship_par_id in self.shipIdList:
-            ship_par = self.RecallShip(ship_par_id)
-            if (ship_par.flag != ship.flag):
-                shiptemplate["x"] = ship_par.x
-                shiptemplate["y"] = ship_par.y
-                shiptemplate["health"] = ship_par.health
-                shiptemplate["flag"] = ship_par.flag
-                template["ships"].append(shiptemplate)
+                ship_par = self.RecallShip(ship_par_id)
+                if not (ship_par is ship):
+                    if (self.CalculateDistance((ship_par.x, ship_par.y), (ship.x, ship.y)) <= 200):
+                        template["ships"].append({
+                            'x' : ship_par.x,
+                            'y' : ship_par.y,
+                            'flag' : ship_par.flag,
+                            'health' : ship_par.health
+                        })
 
         return json.dumps(template)
                 
@@ -143,6 +177,8 @@ class BattleEnvironment:
         Command = Command.ljust(500, " ") # fill up the message with white space to make sure it is 500 bytes...
         socket.sendall(Command.encode('utf-8')) # encode and send it...
 
+    def RemovePlayer(self, shipid):
+        self.shipIdList.remove(shipid)
 
     def handle_client_connection(self, client_socket, ship_id):
         ship = self.RecallShip(ship_id)
@@ -150,34 +186,52 @@ class BattleEnvironment:
         RadarThread = threading.Thread(target=self.SendRadarData, args=[client_socket, ship_id])
         RadarThread.start() # this is a new client... so create and start a thread for radar...
         while locked:
-            request = client_socket.recv(100)
-            if (not request):
+            try:
+                manifest = client_socket.recv(2048)
+            except:
+                self.RemovePlayer(ship_id)
+                print("[+] Player " + str(ship_id) + " has disconnected...")
                 locked = False
+                break
+            # if (not manifest):
+            #     locked = False
 
-            request = request.decode("utf-8")
-            request_parts = request.split(" ")
-            command = request_parts[0]
+            manifest = manifest.decode("utf-8")
+            try:
+                manifest = json.loads(manifest)
+            except:
+                manifest = {"actions" : []}
 
-            if (command == "MOVE"):
-                movementx = int(request_parts[1])
-                movementy = int(request_parts[2])
-                ship.Move(movementx, movementy)
+            print(manifest)
 
-            if (command == "INIT"):
-                ship.name = request_parts[1]
+            cannon_limit = ship.cannon_count
+            move_limit = ship.movement_count
 
-            if (command == "FIRE"):
-                if ((self.CalculateDistance(
-                    (int(request_parts[1]), int (request_parts[2])),
-                    (ship.x, ship.y))
-                    ) < 100):
-                    self.checkBlastingRadius(ship_id, int(request_parts[1]), int(request_parts[2]))
-                    self.craterList.append(shipDefinitions.Shot(ship, int(request_parts[1]), int(request_parts[2])))
-                else:
-                    print("Invalid Range")
+            for request in manifest["actions"]:                
+                command = request["Action"]
 
-            if (command == "QUIT"):
-                locked = False
+                if (command == "MOVE"):
+                    if (move_limit != 0):
+                        movementx = int(request["x"])
+                        movementy = int(request["y"])
+                        ship.Move(movementx, movementy)
+                        move_limit -= 1
+
+                if (command == "INIT"):
+                    ship.name = request["shipname"]
+
+                if (command == "FIRE"):
+                    if ((self.CalculateDistance(
+                        (int(request["x"]), int (request["y"])),
+                        (ship.x, ship.y))
+                        ) < 100):
+                        if (cannon_limit != 0):
+                            self.checkBlastingRadius(ship_id, int(request["x"]), int(request["y"]))
+                            self.craterList.append(shipDefinitions.Shot(ship, int(request["x"]), int(request["y"])))
+                            cannon_limit -= 1
+
+                # if (command == "QUIT"):
+                #     locked = False
 
             time.sleep(0.25)
         client_socket.close()
