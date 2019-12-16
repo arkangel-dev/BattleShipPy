@@ -1,0 +1,7 @@
+{
+    "python.pythonPath": "C:\\Users\\Sam\\AppData\\Local\\Microsoft\\WindowsApps\\python.exe",
+
+    "python.linting.pylintArgs": [
+        "--extension-pkg-whitelist=pygame" 
+    ]
+}
