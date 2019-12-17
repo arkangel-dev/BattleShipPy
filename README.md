@@ -7,15 +7,16 @@ Pygame : `pip install pygame`
 ## Usage
 
 ### Start Server:
-python`
+```python
 import gameEnvironment
 environment = gameEnvironment.BattleEnvironment()
-environment.StartEnvironment()`
+environment.StartEnvironment()
+```
 
 ### Connect Clients
 Note : Each instruction for the ship to behave in the `BattleBotClient` class, only adds that instruction to a list an only by calling `CommitActions` method, will the client send the instruction list to the server, where they are executed.
 
-python```
+```python
 import random
 import ClientLib
 
