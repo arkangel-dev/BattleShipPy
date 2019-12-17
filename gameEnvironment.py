@@ -1,6 +1,5 @@
 import socket
 import threading
-import io
 import time
 import math
 import json
@@ -19,6 +18,7 @@ class BattleEnvironment:
 
     shipIdList = []
     craterList = []
+    bombList = []
     ShipList = weakref.WeakValueDictionary()
 
     bind_ip = '0.0.0.0'
@@ -48,11 +48,11 @@ class BattleEnvironment:
                 return obj
 
     def StartEnvironment(self):
-            network_handler = threading.Thread(target=self.StartListener)
-            print("[+] Starting Network Handler...")
-            network_handler.start()
-            print("[+] Starting GUI Handler...")
-            self.StartGUI()
+        network_handler = threading.Thread(target=self.StartListener)
+        print("[+] Starting Network Handler...")
+        network_handler.start()
+        print("[+] Starting GUI Handler...")
+        self.StartGUI()
 
             
     def StartListener(self):
@@ -73,6 +73,21 @@ class BattleEnvironment:
                     self.done = True
 
             self.screen.fill((0, 0, 0))
+
+            # Draw the bombs...
+            for bomb in self.bombList:
+                if not (bomb.lifetime <= 0):
+                    pygame.draw.circle(self.screen, bomb.color, (bomb.x, bomb.y), int(bomb.size))
+                    bomb.Tick()
+
+                    for shipid in self.shipIdList: # check if there are any ships in the bomb radius and inflict damange on them
+                        ship = self.RecallShip(shipid)
+                        distance = self.CalculateDistance((ship.x, ship.y), (bomb.x, bomb.y))
+                        if ((distance <= bomb.size) & (distance >= 5)):
+                            ship.GetHit(bomb.shooter, 2.5)
+                else:
+                    self.bombList.remove(bomb)
+
             # Draw the elements...
             for shipid in self.shipIdList:
                 ship = self.RecallShip(shipid)
@@ -81,6 +96,9 @@ class BattleEnvironment:
                     self.screen, ship.color,
                     pygame.Rect(ship.x - 3, ship.y - 3, 6, 6)
                 )
+
+                textsurface = self.myfont.render(ship.status, True, (156, 0, 3))
+                self.screen.blit(textsurface, (ship.x, ship.y + 36))
 
                 if self.showRanges:
                     # Draw the ranges...
@@ -111,9 +129,9 @@ class BattleEnvironment:
                             if (distance < 200):
                                 # g_color = 255 * ((200 - distance) / 200)
                                 pygame.draw.line(self.screen, (0, 100, 0), (ship.x, ship.y), (nearby_ship.x, nearby_ship.y), 1)
-                                midpoint = ((ship.x + nearby_ship.x) / 2 + 18, (ship.y + nearby_ship.y) / 2 + 18)
-                                textsurface = self.myfont.render(str(distance), True, (0, 156, 3))
-                                self.screen.blit(textsurface, (midpoint))
+                                # midpoint = ((ship.x + nearby_ship.x) / 2 + 18, (ship.y + nearby_ship.y) / 2 + 18)
+                                # textsurface = self.myfont.render(str(distance), True, (0, 156, 3))
+                                # self.screen.blit(textsurface, (midpoint))
                 
             # Draw the shots...
             for crater in self.craterList:
@@ -125,7 +143,7 @@ class BattleEnvironment:
                     self.craterList.remove(crater)
 
             pygame.display.flip()
-            self.clock.tick(60)
+            self.clock.tick(30)
 
 
 
@@ -161,21 +179,21 @@ class BattleEnvironment:
         })
 
         for ship_par_id in self.shipIdList:
-                ship_par = self.RecallShip(ship_par_id)
-                if not (ship_par is ship):
-                    if (self.CalculateDistance((ship_par.x, ship_par.y), (ship.x, ship.y)) <= 200):
-                        template["ships"].append({
-                            'x' : ship_par.x,
-                            'y' : ship_par.y,
-                            'flag' : ship_par.flag,
-                            'health' : ship_par.health
-                        })
+            ship_par = self.RecallShip(ship_par_id)
+            if not (ship_par is ship):
+                if (self.CalculateDistance((ship_par.x, ship_par.y), (ship.x, ship.y)) <= 200):
+                    template["ships"].append({
+                        'x' : ship_par.x,
+                        'y' : ship_par.y,
+                        'flag' : ship_par.flag,
+                        'health' : ship_par.health
+                    })
 
         return json.dumps(template)
                 
-    def Send(self, socket, Command): # send the message...
+    def Send(self, insock, Command): # send the message...
         Command = Command.ljust(500, " ") # fill up the message with white space to make sure it is 500 bytes...
-        socket.sendall(Command.encode('utf-8')) # encode and send it...
+        insock.sendall(Command.encode('utf-8')) # encode and send it...
 
     def RemovePlayer(self, shipid):
         self.shipIdList.remove(shipid)
@@ -202,7 +220,7 @@ class BattleEnvironment:
             except:
                 manifest = {"actions" : []}
 
-            print(manifest)
+            # print(manifest)
 
             cannon_limit = ship.cannon_count
             move_limit = ship.movement_count
@@ -221,14 +239,25 @@ class BattleEnvironment:
                     ship.name = request["shipname"]
 
                 if (command == "FIRE"):
-                    if ((self.CalculateDistance(
-                        (int(request["x"]), int (request["y"])),
-                        (ship.x, ship.y))
-                        ) < 100):
-                        if (cannon_limit != 0):
-                            self.checkBlastingRadius(ship_id, int(request["x"]), int(request["y"]))
-                            self.craterList.append(shipDefinitions.Shot(ship, int(request["x"]), int(request["y"])))
-                            cannon_limit -= 1
+                    if not ship.locked:
+                        if ((self.CalculateDistance(
+                            (int(request["x"]), int (request["y"])),
+                            (ship.x, ship.y))
+                            ) < 100):
+                            if (cannon_limit != 0):
+                                self.checkBlastingRadius(ship_id, int(request["x"]), int(request["y"]))
+                                self.craterList.append(shipDefinitions.Shot(ship, int(request["x"]), int(request["y"])))
+                                cannon_limit -= 1
+
+                if (command == "DESTRUCT"):
+                    if not (ship.locked):
+                        ship.status = "Arming Bomb"
+                        time.sleep(5)
+                        if not (ship.locked):
+                            self.bombList.append(shipDefinitions.Bomb(ship, ship.x, ship.y))
+                            ship.Destruct()
+                            
+
 
                 # if (command == "QUIT"):
                 #     locked = False

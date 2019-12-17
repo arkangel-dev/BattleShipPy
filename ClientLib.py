@@ -1,5 +1,4 @@
 import socket
-import sys
 import threading
 import time
 import json
@@ -72,6 +71,12 @@ class BattleBotClient:
             "Action" : "FIRE",
             "x" : str(x),
             "y" : str(y)
+        }
+        self.action_list["actions"].append(Command)
+
+    def SelfDestruct(self):
+        Command = {
+            "Action" : "DESTRUCT",
         }
         self.action_list["actions"].append(Command)
 
