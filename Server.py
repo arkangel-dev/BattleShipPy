@@ -1,4 +1,5 @@
-import gameEnvironment
+import BattleShipPy
+import shipDefinitions
 
-environment = gameEnvironment.BattleEnvironment()
-environment.StartEnvironment()
+environment = BattleShipPy.Server()
+environment.Start()

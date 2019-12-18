@@ -1,9 +1,9 @@
 import socket
 import threading
+import json 
 import time
-import json
 
-class BattleBotClient:
+class Client:
     client_name = ""
     server = ""
     port = 0
@@ -87,4 +87,15 @@ class BattleBotClient:
         time.sleep(0.25)
         self.action_list["actions"].clear()
 
-    
+    def MoveTowards(self, coords):
+        x = 0
+        y = 0
+        if (self.x > coords[0]):
+            x = -1
+        elif (self.x < coords[0]):
+            x = 1
+        if (self.y > coords[1]):
+            y = -1
+        elif (self.y < coords[1]):
+            y = 1
+        self.Move(x, y)
