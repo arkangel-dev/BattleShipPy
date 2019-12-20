@@ -29,6 +29,8 @@ class Server:
     server.bind((bind_ip, bind_port))
     server.listen(5)
     myfont = pygame.font.SysFont('Arial MS', 16)
+    max_users = 5
+    user_count = 0
 
 
     # Visual Settings...
@@ -62,12 +64,19 @@ class Server:
         print('[+] Listening on ' + str(self.bind_ip) + ":" + str(self.bind_port))
         while True:
             client_sock, address = self.server.accept()
-            print('[+] Accepted connection from {}:{}'.format(address[0], address[1]))
-            client_handler = threading.Thread(
-                target=self.newPlayer,
-                args=(client_sock,) 
-            )
-            client_handler.start()
+            if (self.user_count < self.max_users):
+                print('[+] Accepted connection from {}:{}'.format(address[0], address[1]))
+                client_handler = threading.Thread(
+                    target=self.newPlayer,
+                    args=(client_sock,) 
+                )
+                client_handler.start()
+            else:
+                print("[+] Dropped connection from {}:{} due to max user capacity".format(address[0], address[1]))
+                self.Send(client_sock, "Cannot Accept Connection : Reason : Server is at maximum capacity!")
+                self.Send(client_sock, "")
+                client_sock.close()
+            print(str(self.user_count))
 
     def StartGUI(self):
         while not self.done:
@@ -158,9 +167,11 @@ class Server:
     def newPlayer(self, client_socket): # add a new ship to the system...
         currentShip = Ships.BattleShip("???")
         newshipid = id(currentShip)
+        self.user_count += 1
         self.remember(currentShip)
         self.shipIdList.append(newshipid)
         self.handle_client_connection(client_socket, newshipid)
+        
 
 
     def SendRadarData(self, client_socket, ship_id): # send the radar information to the client
@@ -201,8 +212,11 @@ class Server:
         Command = Command.ljust(500, " ") # fill up the message with white space to make sure it is 500 bytes...
         insock.sendall(Command.encode('utf-8')) # encode and send it...
 
+
     def RemovePlayer(self, shipid):
+        self.user_count -= 1
         self.shipIdList.remove(shipid)
+        
 
     def handle_client_connection(self, client_socket, ship_id):
         ship = self.RecallShip(ship_id)
