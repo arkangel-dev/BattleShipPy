@@ -2,6 +2,7 @@ import socket
 import threading
 import json 
 import time
+import pygame
 
 class Client:
     client_name = ""
@@ -19,11 +20,48 @@ class Client:
     
     action_list = {"actions" : []}
 
+    showWindow = False
+    windowObejct = ""
+    done = False
+
     def __init__ (self, client_name, server, port):
         self.server = server
         self.port = port
         self.client_name = client_name
         self.server_address = (self.server, self.port)
+
+
+    clock = None
+    screen = None
+
+    def UpdateWindow(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT: 
+                break
+
+        self.screen.fill((0, 0, 0))
+
+
+
+        pygame.draw.rect(
+            self.screen, (0, 255, 0),
+            pygame.Rect(self.x - 3, self.y - 3, 6, 6)
+        )
+
+        skip = False
+        for ship in self.ShipList:
+            if (skip):
+                pygame.draw.rect(
+                    self.screen, (255, 0, 0),
+                    pygame.Rect(ship["x"] - 3, ship["y"] - 3, 6, 6)
+                )
+            else:
+                skip = True
+
+
+        pygame.display.flip()
+        self.clock.tick(60)
+
 
     def StartRadar(self):
         radarThread = threading.Thread(target=self.RadarProcess)
@@ -49,12 +87,21 @@ class Client:
         self.flag = jsonObj["ships"][0]["flag"]
 
     def Connect(self):
+        connthread = threading.Thread(target=self.CommitConnection())
+        connthread.start()
+
+        if (self.showWindow):
+            self.clock = pygame.time.Clock()
+            self.screen = pygame.display.set_mode((800, 800))
+
+    def CommitConnection(self):
         self.sock.connect(self.server_address)
         Command = {
             "Action" : "INIT",
             "shipname" : self.client_name
         }
         self.action_list["actions"].append(Command)
+        self.CommitActions()
 
     def Move(self, x, y):
         # Command = "MOVE " + str(x) + " " + str(y)

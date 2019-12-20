@@ -1,3 +1,4 @@
+from pygame.locals import *
 import socket
 import threading
 import time
@@ -36,6 +37,7 @@ class Server:
     showCoords = True
     showName = True
     showDistance = True
+    showScore = True
 
 
     def remember(self, obj):
@@ -99,7 +101,7 @@ class Server:
                 )
 
                 textsurface = self.myfont.render(ship.status, True, (156, 0, 3))
-                self.screen.blit(textsurface, (ship.x, ship.y + 36))
+                self.screen.blit(textsurface, (ship.x, ship.y + 45))
 
                 if self.showRanges:
                     # Draw the ranges...
@@ -120,6 +122,11 @@ class Server:
                     # Draw the ship co-ordinates...
                     textsurface = self.myfont.render(str(ship.x) + ":" + str(ship.y), True, (0, 156, 3))
                     self.screen.blit(textsurface, (ship.x, ship.y + 27))
+
+                if self.showScore:
+                    # Draw the ship score...
+                    textsurface = self.myfont.render(str(ship.score), True, (0, 156, 3))
+                    self.screen.blit(textsurface, (ship.x, ship.y + 36))
 
                 if self.showDistance:
                     # Draw a line between the ships...
@@ -359,6 +366,7 @@ class Ships:
                 damage_rate = firepower - (firepower * (self.endurace / 100))
                 self.health -= damage_rate
                 hitter.score += 1
+                self.score -= 1
                 if self.health < 0:
                     self.health = 0
                 self.UpdateColor()
