@@ -21,6 +21,7 @@ public class App {
 		// 	); // Print the current position
 		// }
 		while (true) {
+			Server.UpdateTelemetry();
 			Thread.sleep(1000);
 			Server.SelfDestruct();
 			Server.Commit();

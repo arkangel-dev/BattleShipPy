@@ -9,6 +9,8 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.List;
 
+import javax.swing.text.AbstractDocument.Content;
+
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -25,9 +27,17 @@ public class JaBattleship {
 	private PrintWriter outgoing;
 	private BufferedReader incoming;
 
-	public Ship Me = new Ship(0, 0, 0, 0, 0);
+	public Ship Me = new Ship(0, 0, 0, "0", 0);
 	public JsonObject ActionList = new JsonObject();
-	public List<Ship> ShipList;
+	private List<Ship> ShipList;
+
+	/**
+	 * Returns a list of all the ships from the telemetry data
+	 * @return A list of ships
+	 */
+	public List<Ship> GetShipList(){
+		return ShipList;
+	}
 
 	/**
 	 * Clears the command cache
@@ -41,10 +51,10 @@ public class JaBattleship {
 		public int x = 0;
 		public int y = 0;
 		public int score = 0;
-		public int flag = 0;
+		public String flag = "0";
 		public int health = 0;
 
-		public Ship(int x, int y, int score, int flag, int health) {
+		public Ship(int x, int y, int score, String flag, int health) {
 			this.x = x;
 			this.y = y;
 			this.score = score;
@@ -52,6 +62,14 @@ public class JaBattleship {
 			this.health = health;
 		}
 
+		/**
+		 * Calculates the distance between 2 points
+		 * @param ax
+		 * @param ay
+		 * @param bx
+		 * @param by
+		 * @return
+		 */
 		private double calculate_distance(int ax, int ay, int bx, int by){
 			return Math.sqrt(
 				Math.pow((bx-ax), 2) + 
@@ -212,7 +230,5 @@ public class JaBattleship {
 		outgoing.println(commandString);
 		ClearCommandCache();
 	}
-
-
 }
 

@@ -42,8 +42,6 @@ class Client:
 
 		self.screen.fill((0, 0, 0))
 
-
-
 		pygame.draw.rect(
 			self.screen, (0, 255, 0),
 			pygame.Rect(self.x - 3, self.y - 3, 6, 6)
@@ -59,10 +57,8 @@ class Client:
 			else:
 				skip = True
 
-
 		pygame.display.flip()
 		self.clock.tick(60)
-
 
 	def StartRadar(self):
 		radarThread = threading.Thread(target=self.RadarProcess)
@@ -90,7 +86,6 @@ class Client:
 	def Connect(self):
 		connthread = threading.Thread(target=self.CommitConnection())
 		connthread.start()
-
 		if (self.showWindow):
 			self.clock = pygame.time.Clock()
 			self.screen = pygame.display.set_mode((800, 800))

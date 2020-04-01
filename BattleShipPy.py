@@ -76,7 +76,6 @@ class Server:
 				self.Send(client_sock, "Cannot Accept Connection : Reason : Server is at maximum capacity!")
 				self.Send(client_sock, "")
 				client_sock.close()
-			print(str(self.user_count))
 
 	def StartGUI(self):
 		while not self.done:
