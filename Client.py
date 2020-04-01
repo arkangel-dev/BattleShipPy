@@ -2,7 +2,7 @@ import random
 import BattleShipPyClient
 import supplement_functions as sf
 
-ship = BattleShipPyClient.Client("Arkangel-" + str(random.randrange(100,999)), "localhost", 9999)
+ship = BattleShipPyClient.Client("Arkangel-" + str(random.randrange(100,999)), "localhost", 9999, showWindow=True)
 # ship.showWindow = True
 ship.Connect()
 ship.StartRadar()
