@@ -8,7 +8,7 @@ The Java client like its Python counterpart has a JSON list that contains all th
 
 ```json
 {
-    'actions' : []
+    "actions" : []
 }
 ```
 
@@ -18,8 +18,8 @@ This command is called when the client first connects to the server. This method
 
 ```json
 {
-    'Action':'INIT',
-    'shipname':'Arkangel'
+    "Action":"INIT",
+    "shipname":"Arkangel"
 }
 ```
 
@@ -29,9 +29,9 @@ Will move the ship. The ship can only move 1 or 2 units on any axis at any time.
 
 ```json
 {
-    'Action':'MOVE',
-    'x':'2',
-    'y':'2'
+    "Action":"MOVE",
+    "x":"2",
+    "y":"2"
 }
 ```
 
@@ -43,9 +43,9 @@ Fires the cannon at a specified co-ordinate. This method will also create a JSON
 
 ```json
 {
-    'Action':'FIRE',
-    'x':'5',
-    'y':'5'
+    "Action":"FIRE",
+    "x":"5",
+    "y":"5"
 }
 ```
 
@@ -55,7 +55,7 @@ Detonates a bomb that will damage all ships in a 126 unit radius. The blast will
 
 ```json
 {
-    'Action':'DESTRUCT'
+    "Action":"DESTRUCT"
 }
 ```
 
@@ -87,10 +87,10 @@ Client.SelfDestruct();
 
 ```json
 {
-    'actions' : [
-        {'Action':'INIT', 'shipname':'Arkangel'},
-        {'Action':'MOVE', 'x':'2', 'y':'2'},
-        {'Action':'DESTRUCT'}
+    "actions" : [
+        {"Action":"INIT", "shipname":"Arkangel"},
+        {"Action":"MOVE", "x":"2", "y":"2"},
+        {"Action":"DESTRUCT"}
     ]
 }
 ```
