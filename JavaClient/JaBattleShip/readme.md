@@ -88,7 +88,7 @@ Client.SelfDestruct();
 ```json
 {
     "actions" : [
-        {"Action":"INIT", "shipname":"Arkangel"},
+        {"Action":"INIT", "shipname":"Ark"},
         {"Action":"MOVE", "x":"2", "y":"2"},
         {"Action":"DESTRUCT"}
     ]
