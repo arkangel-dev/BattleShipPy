@@ -8,9 +8,13 @@ Pygame : `pip install pygame`
 ## Usage
 ### Start Server:
 ```python
-import gameEnvironment
-environment = gameEnvironment.BattleEnvironment()
-environment.StartEnvironment()
+import BattleShipPy
+environment = BattleShipPy.Server(
+	dropConnectionOnBadRequest=True,
+	enableColorDebug=True,
+	maxPlayerCount=4
+)
+environment.Start()
 ```
 
 ### Connect Clients
@@ -21,43 +25,33 @@ Note : Each instruction for the ship to behave in the `BattleBotClient` class, o
 import random
 import BattleShipPyClient
 
-ship = BattleShipPyClient.Client("Arkangel", "localhost", 9999) # Define the connection
-ship.Connect() # Connect
-ship.StartRadar() # Start the 'radar' thread
+ship = BattleShipPyClient.Client("Arkangel-" + str(random.randrange(100,999)), "S23", localhost", 9999)
+ship.Connect()
 
-while 1:
-    ship.Move(1, 2) # Move 1 units to the right and 2 units down
-    ship.Fire(4, 4) # Fire the co-ordiantes (4, 4)
-    ship.SelfDestruct() # Detonate self destruct
-    ship.CommitActions() # Send the actions to the server. This is required for the server to execute the previous actions
+while ship.gameActive:
+	
+	ship.MoveTowards((400, 400))
+	if (len(ship.ShipList) > 1):
+		ship.Fire(ship.ShipList[1]["x"], ship.ShipList[1]["y"]) 
+
+	if (ship.CalculateDistance((ship.x, ship.y), (400, 400)) <= 50):
+				ship.SelfDestruct()
+	ship.CommitActions()
 ```
 
 ### `Java`
 
-The java  client has more or less the same functionality as the its python counterpart. The only main difference is that the Java client runs on a single thread. But that will be soon updated to run multi-threaded as Python.
+The java  client has more or less the same functionality as the its python counterpart. The radar thread on the Java client also now runs on its own thread.
 
 ```java
 package battleship;
 
 public class App {
     public static void main(String[] args) throws Exception {
-		
-		JaBattleship Server = new JaBattleship(
-			"Ark",
-			"127.0.0.1",
-			 9999
-		); // Define the connection
-
+		JaBattleship Client = new JaBattleship("Ark", "SEC435389", "127.0.0.1", 9999);
 		while (true) {
-			Server.UpdateTelemetry(); // Update the telemetry
-			Server.Move(1, 1); // Move the ship
-			Server.Commit(); // Commit to the appended commands
-			Thread.sleep(250); // Sleep
-
-			System.out.println(
-				"X : " + Server.Me.x +
-				" | y : " + Server.Me.y
-			); // Print the current position
+			Client.MoveTowards(400, 400);
+			Client.Commit();
 		}
     }
 }

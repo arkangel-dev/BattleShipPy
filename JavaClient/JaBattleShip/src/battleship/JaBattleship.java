@@ -9,8 +9,6 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.List;
 
-import javax.swing.text.AbstractDocument.Content;
-
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -21,6 +19,7 @@ import com.google.gson.reflect.TypeToken;
 public class JaBattleship {
 	public String client_name = "";
 	public String ServerHost = "";
+	public String secretToken = "";
 	public int ServerPort = 0;
 
 	private Socket socket;
@@ -33,9 +32,10 @@ public class JaBattleship {
 
 	/**
 	 * Returns a list of all the ships from the telemetry data
+	 * 
 	 * @return A list of ships
 	 */
-	public List<Ship> GetShipList(){
+	public List<Ship> GetShipList() {
 		return ShipList;
 	}
 
@@ -64,32 +64,26 @@ public class JaBattleship {
 
 		/**
 		 * Calculates the distance between 2 points
+		 * 
 		 * @param ax
 		 * @param ay
 		 * @param bx
 		 * @param by
 		 * @return
 		 */
-		private double calculate_distance(int ax, int ay, int bx, int by){
-			return Math.sqrt(
-				Math.pow((bx-ax), 2) + 
-				Math.pow((by-ay), 2)
-			);
+		public double calculate_distance(int ax, int ay, int bx, int by) {
+			return Math.sqrt(Math.pow((bx - ax), 2) + Math.pow((by - ay), 2));
 		}
 
 		/**
 		 * Calculate this ships distance from the co-ordinates passwed
-		 * @param x 
+		 * 
+		 * @param x
 		 * @param y
 		 * @return
 		 */
 		public double CalculateDistanceFrom(int x, int y) {
-			return calculate_distance(
-				this.x, 
-				this.y, 
-				x, 
-				y
-			);
+			return calculate_distance(this.x, this.y, x, y);
 		}
 	}
 
@@ -97,10 +91,11 @@ public class JaBattleship {
 	 * Initilizes the client
 	 */
 	private void Init() {
-		JsonObject moveCommand = new JsonObject();
-		moveCommand.addProperty("Action", "INIT");
-		moveCommand.addProperty("shipname", client_name);
-		ActionList.get("actions").getAsJsonArray().add(moveCommand);
+		JsonObject initCommand = new JsonObject();
+		initCommand.addProperty("Action", "INIT");
+		initCommand.addProperty("shipname", client_name);
+		initCommand.addProperty("secret", secretToken);
+		ActionList.get("actions").getAsJsonArray().add(initCommand);
 	}
 
 	/**
@@ -112,14 +107,17 @@ public class JaBattleship {
 	 * @throws UnknownHostException
 	 * @throws IOException
 	 */
-	public JaBattleship(String ShipName, String Hostname, int Port) throws UnknownHostException, IOException {
+	public JaBattleship(String ShipName, String Secret, String Hostname, int Port)
+			throws UnknownHostException, IOException {
 		ServerHost = Hostname;
 		ServerPort = Port;
 		client_name = ShipName;
+		secretToken = Secret;
 		socket = new Socket(Hostname, Port);
 		outgoing = new PrintWriter(socket.getOutputStream(), true);
 		incoming = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-		
+		Thread radarThread = new Thread(new RadarThread());
+		radarThread.start();
 		ClearCommandCache(); // initilize the CommandCache
 		Init();
 		Commit(); // Send the initilization command to the server
@@ -128,107 +126,113 @@ public class JaBattleship {
 	/**
 	 * Reads data from the connection
 	 */
+	private char[] buff = new char[500];
 	private String ReadData() {
-		char[] buff = new char[500];
+		
 		try {
 			incoming.read(buff, 0, 500);
-		} catch (IOException e) {
-			e.printStackTrace();
+		} catch (IOException i) {
+			// i.printStackTrace();
 		}
 		String content = String.valueOf(buff);
+		// System.out.println(content);
 		return content;
 	}
 
 	/**
-	 * Updates the client telemetry data. Call this function every iteration to make sure that all
-	 * telemetry data stays up-to-date
+	 * Updates the client telemetry data. Call this function every iteration to make
+	 * sure that all telemetry data stays up-to-date
 	 */
+
+	public Type listType = new TypeToken<List<Ship>>() {}.getType();
 	public void UpdateTelemetry() {
-		JsonElement jsonTree = new JsonParser()
-			.parse(ReadData())
-			.getAsJsonObject();
-		Type listType = new TypeToken<List<Ship>>(){}.getType();
-		ShipList = new Gson()
-			.fromJson(
-				jsonTree.getAsJsonObject()
-				.get("ships"),
-				listType
-			);
-		this.Me = ShipList.get(0);
+		JsonElement jsonTree = new JsonParser().parse(ReadData()).getAsJsonObject();
 		
+		ShipList = new Gson().fromJson(jsonTree.getAsJsonObject().get("ships"), listType);
+		this.Me = ShipList.get(0);
 	}
 
 	/**
 	 * Moves the ship in a step-like fashion in the x and y axis
+	 * 
 	 * @param x Defines how many steps to move in the x axis
 	 * @param y Defines how many steps to move in the y axis
 	 */
-	public void Move(int x, int y){
+	public void Move(int x, int y) {
 		JsonObject moveCommand = new JsonObject();
 		moveCommand.addProperty("Action", "MOVE");
 		moveCommand.addProperty("x", Integer.toString(x));
 		moveCommand.addProperty("y", Integer.toString(y));
-		ActionList.get("actions")
-			.getAsJsonArray()
-			.add(moveCommand);		
+		ActionList.get("actions").getAsJsonArray().add(moveCommand);
+	}
+
+	public class RadarThread implements Runnable {
+		@Override
+		public void run() {
+			while(true) {
+				UpdateTelemetry();
+			}
+		}
 	}
 
 	/**
 	 * Fires the canons at the passed co-ordinates
+	 * 
 	 * @param x
 	 * @param y
 	 */
-	public void Fire(int x, int y){
-		JsonObject moveCommand = new JsonObject();
-		moveCommand.addProperty("Action", "FIRE");
-		moveCommand.addProperty("x", Integer.toString(x));
-		moveCommand.addProperty("y", Integer.toString(y));
-		ActionList.get("actions")
-			.getAsJsonArray()
-			.add(moveCommand);		
+	public void Fire(int x, int y) {
+		JsonObject fireCommand = new JsonObject();
+		fireCommand.addProperty("Action", "FIRE");
+		fireCommand.addProperty("x", Integer.toString(x));
+		fireCommand.addProperty("y", Integer.toString(y));
+		ActionList.get("actions").getAsJsonArray().add(fireCommand);
 	}
 
 	/**
-	 * Detonates a bomb and damages all ships within a 126 unit radius.
-	 * This will damage your ship as well and reduce your health level
-	 * by 75 units. Your ship will take 10 seconds to repair.
+	 * Detonates a bomb and damages all ships within a 126 unit radius. This will
+	 * damage your ship as well and reduce your health level by 75 units. Your ship
+	 * will take 10 seconds to repair.
 	 */
-	public void SelfDestruct(){
-		JsonObject moveCommand = new JsonObject();
-		moveCommand.addProperty("Action", "DESTRUCT");
-		ActionList.get("actions")
-			.getAsJsonArray()
-			.add(moveCommand);		
+	public void SelfDestruct() {
+		JsonObject destructCommand = new JsonObject();
+		destructCommand.addProperty("Action", "DESTRUCT");
+		ActionList.get("actions").getAsJsonArray().add(destructCommand);
 	}
 
 	/**
 	 * Moves towards the specified co-dinates.
+	 * 
 	 * @param x
 	 * @param y
-	 */	
+	 */
 	public void MoveTowards(int x, int y) {
-        int mx = 0;
-        int my = 0;
-        if (Me.x > x){
+		int mx = 0;
+		int my = 0;
+		if (Me.x > x) {
 			mx = -1;
 		} else if (Me.x < x) {
 			mx = 1;
 		}
-        if (Me.y > y) {
+		if (Me.y > y) {
 			my = -1;
 		} else if (Me.y < y) {
 			my = 1;
 		}
-        this.Move(mx, my);
+		this.Move(mx, my);
 	}
 
 	/**
 	 * Commits the pending actions and sends it to the server
 	 */
 	public void Commit() {
-		String commandString = ActionList.toString();
-		outgoing.println(commandString);
-		ClearCommandCache();
+
+		try {
+			String commandString = ActionList.toString();
+			outgoing.println(commandString);
+			ClearCommandCache();
+			Thread.sleep(80);
+		} catch (InterruptedException e) {}
 	}
 }
 
